@@ -1,4 +1,6 @@
 from scapy.all import TCP, IP, ICMP, UDP, ARP
+
+
 # https://gist.github.com/MarkBaggett/d8933453f431c111169158ce7f4e2222
 # scapy helper for session analysis
 def full_duplex(p):

@@ -2,7 +2,8 @@ from util import full_duplex
 from baseline import Baseline
 import logging
 from collections import Counter
-from scapy.all import IP, TCP, Raw
+from scapy.all import Raw
+
 
 class BaselineAnalyzer:
     def __init__(self):

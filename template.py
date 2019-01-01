@@ -16,6 +16,7 @@ class ConvoTemplate:
         self.sent.update(sent)
         self.recv.update(recv)
 
+
 class Template:
     def __init__(self, text, variables=[]):
         self.text = text
@@ -30,13 +31,14 @@ class Template:
         for tag, i1, i2, j1, j2 in s.get_opcodes():
             ln = i2-i1
             ln2 = j2-j1
+
             s = [self.text[i1:i2], other[j1:j2]]
             if tag == 'replace':
-                vars.append(TemplateVariable(i1, ln, ln2, s))
+                vars.append(TemplateVariable(i1, ln, min(ln2, ln), max(ln2, ln), s))
             elif tag == 'delete':
-                vars.append(TemplateVariable(i1, 0, ln, s))
+                vars.append(TemplateVariable(i1, ln, 0, ln, s))
             elif tag == 'insert':
-                vars.append(TemplateVariable(i1, 0, ln2, s))
+                vars.append(TemplateVariable(i1, 0, 0, ln2, s))
         return vars
 
     def similarity(self, other):
@@ -48,8 +50,9 @@ class Template:
 
 
 class TemplateVariable:
-    def __init__(self, pos, min_len, max_len, contents):
+    def __init__(self, pos, len, min_len, max_len, contents):
         self.pos = pos
+        self.len = len
         self.min_len = min_len
         self.max_len = max_len
         self.contents = contents
@@ -58,8 +61,9 @@ class TemplateVariable:
         if not isinstance(other, TemplateVariable):
             return False
         return self.pos == other.pos and \
+            self.len == other.len and \
             self.min_len == other.min_len and \
             self.max_len == other.max_len
             
     def __repr__(self):
-        return "var: {}:{}-{}".format(self.pos, self.min_len, self.max_len)
+        return "var: {}:{} R{}-{}".format(self.pos, self.len, self.min_len, self.max_len)

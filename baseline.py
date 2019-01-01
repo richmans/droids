@@ -1,6 +1,7 @@
 from template import ConvoTemplate
 import logging
 
+
 class Baseline:
     TRAINING_TRESHOLD = 0.7
 
