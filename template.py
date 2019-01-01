@@ -32,7 +32,7 @@ class Template:
             ln2 = j2-j1
             s = [self.text[i1:i2], other[j1:j2]]
             if tag == 'replace':
-                vars.append(TemplateVariable(i1, ln, ln, s))
+                vars.append(TemplateVariable(i1, ln, ln2, s))
             elif tag == 'delete':
                 vars.append(TemplateVariable(i1, 0, ln, s))
             elif tag == 'insert':
@@ -53,3 +53,13 @@ class TemplateVariable:
         self.min_len = min_len
         self.max_len = max_len
         self.contents = contents
+
+    def __eq__(self, other):
+        if not isinstance(other, TemplateVariable):
+            return False
+        return self.pos == other.pos and \
+            self.min_len == other.min_len and \
+            self.max_len == other.max_len
+            
+    def __repr__(self):
+        return "var: {}:{}-{}".format(self.pos, self.min_len, self.max_len)
