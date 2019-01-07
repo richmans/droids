@@ -8,7 +8,12 @@ Then, during the challenge phase, it detects conversations that don't fit in the
 baseline. This lets you quickly find the attacks that others are using on your
 server.
 
-# Demonstration
+## Requirements
+- Tested only in python3 
+- Scapy is used for packet analysis: `pip3 install scapy`
+- docker is used only for the demonstration (optional)
+
+## Demonstration
 First, let's prepare some pcaps to analyze. The directory droids_demo contains a 
 docker instance that runs two services and a tcpdump. The generate_pcaps.sh script invokes those services and
 generates two sets of pcaps:
