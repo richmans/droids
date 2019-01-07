@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 .idea/
+baseline.yml
+droids_demo/example_data
 # C extensions
 *.so
 

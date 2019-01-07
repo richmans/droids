@@ -5,10 +5,17 @@ from collections import Counter
 from scapy.all import Raw
 
 
+class BaselineError(Exception):
+    pass
+
+
 class BaselineAnalyzer:
     def __init__(self):
         self.baseline = Baseline()
         self.mymac = None
+
+    def load_baseline(self, infil):
+        self.baseline = Baseline.read(infil)
 
     def find_my_mac(self, packets):
         src_macs = [p['Ether'].src for p in packets if 'Ether' in p]
@@ -20,7 +27,7 @@ class BaselineAnalyzer:
         if common[0][1] < common[1][1]:
             raise Exception("Could not determine my mac address... Try giving me more packets!")
         self.mymac = common[0][0]
-        logging.debug("Determined my mac: " + self.mymac)
+        logging.debug("Determined my mac: {}, {}/{}".format(self.mymac, common[0][1], common[1][1]))
         return self.mymac
 
     def my_packet(self, packet):
@@ -44,11 +51,16 @@ class BaselineAnalyzer:
         dst = tcp.dport
         logging.debug("{} packets to destination port {}".format(len(packets),dst))
         convo = self.packets_to_convo(packets)
-        self.baseline.addConvo(dst, convo)
+        if self.target == 'baseline':
+            self.baseline.addConvo(dst, convo)
+        elif self.target == 'detection':
+            message, score = self.baseline.checkConvo(dst, convo)
+            if score > 0.1:
+                logging.warning(message)
 
     def packets_to_convo(self, packets):
-        sent = [self.get_payload(p) for p in packets if self.my_packet(p)]
-        recv = [self.get_payload(p) for p in packets if not self.my_packet(p)]
+        sent = b''.join([self.get_payload(p) for p in packets if self.my_packet(p)])
+        recv = b''.join([self.get_payload(p) for p in packets if not self.my_packet(p)])
         return (sent, recv)
 
     def analyze_udp_session(self, packets):
@@ -74,9 +86,18 @@ class BaselineAnalyzer:
         else:
             logging.debug("Unrecognized protocol :(")
 
-    def create_baseline(self, packets):
-        logging.info("==== IDS Baseline Creation ====")
-        self.find_my_mac(packets)
+    def run(self, packets, target='baseline', mymac=None):
+        if target == 'baseline':
+            logging.info("==== IDS Baseline Creation ====")
+        elif target == 'detection':
+            logging.info("==== IDS Anomaly detection ====")
+        else:
+            raise BaselineError("Unknown analyzer target")
+        self.target = target
+        if mymac:
+            self.mymac = mymac
+        else:
+            self.find_my_mac(packets)
         sessions = packets.sessions(full_duplex)
         logging.info('Read {} packets in {} sessions'.format(len(packets), len(sessions)))
         for s in sessions:
