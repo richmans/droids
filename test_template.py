@@ -1,6 +1,6 @@
 from base_test import BaseTest
-from template import Template, TemplateVariable
-from util import dbg
+from template import Template, TemplateVariable, ConvoTemplate
+from unittest.mock import Mock
 
 
 class TemplateTest(BaseTest):
@@ -57,3 +57,62 @@ class TemplateTest(BaseTest):
         self.check_update('xyzabcdefghijklmnopqrstuvwxyzxyz')
         self.check_update('defghijklmnopqrstuvw')
         self.check_update('abcdefghixyzxyklmnopqrstuvwxyz')
+
+    def mock_var(self, pos=0, len=0, fits=True):
+        mock_var = Mock()
+        mock_var.fits.return_value = fits
+        mock_var.pos= pos
+        mock_var.len = len
+        mock_var.__lt__ = lambda x,y: True
+        return mock_var
+
+    def test_var_fit(self):
+        self.assertTrue(Template("abc", [self.mock_var(fits=True)]).fit_variable('good'))
+        self.assertTrue(Template("abc", [self.mock_var(fits=False), self.mock_var(fits=True)]).fit_variable('good'))
+        self.assertFalse(Template("abc", [self.mock_var(fits=False)]).fit_variable('bad'))
+
+    def check_consolidate(self, invars, checkvars):
+        invars = [TemplateVariable(*v) for v in invars]
+        checkvars = [TemplateVariable(*v) for v in checkvars]
+        t = Template("abcdefghijklmnopqrstuvwxyz", invars)
+        self.assertEqual(checkvars, t.variables)
+
+    def test_consolidate(self):
+        # variable inclusion
+        self.check_consolidate([(1, 5, 5, 5), (2, 4, 4, 4)], [(1, 5, 5, 5)])
+        # variable with shorter min_len
+        self.check_consolidate([(1, 5, 5, 5), (2, 4, 1, 4)], [(1, 5, 2, 5)])
+        # variable with longer max_len
+        self.check_consolidate([(1, 5, 5, 5), (2, 4, 4, 5)], [(1, 5, 5, 6)])
+        # non contiguous variable
+        self.check_consolidate([(1, 5, 5, 5), (7, 1, 1, 1)], [(1, 5, 5, 5), (7, 1, 1, 1)])
+
+
+class ConvoTemplateTest(BaseTest):
+    def check_similarity(self, sent, recv, result):
+        sent_mock = Mock()
+        sent_mock.similarity.return_value = sent
+        recv_mock = Mock()
+        recv_mock.similarity.return_value = recv
+        c = ConvoTemplate("","")
+        c.recv = recv_mock
+        c.sent = sent_mock
+        self.assertEqual(result, c.similarity('a', 'b'))
+        sent_mock.similarity.assert_called_once_with('a')
+        recv_mock.similarity.assert_called_once_with('b')
+
+    def test_similarity(self):
+        self.check_similarity(2, 0.5, 1.25)
+        self.check_similarity(2, 0, 1)
+        self.check_similarity(0, 2, 1)
+        self.check_similarity(0, 0, 0)
+
+    def test_update(self):
+        sent_mock = Mock()
+        recv_mock = Mock()
+        c = ConvoTemplate("", "")
+        c.recv = recv_mock
+        c.sent = sent_mock
+        c.update('a', 'b')
+        sent_mock.update.assert_called_once_with('a')
+        recv_mock.update.assert_called_once_with('b')

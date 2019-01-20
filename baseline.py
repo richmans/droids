@@ -5,11 +5,13 @@ import yaml
 class Baseline:
     TRAINING_TRESHOLD = 0.7
     DETECTION_TRESHOLD = 0.1
+    SPECIAL_STRINGS = {b'?':0.1,b';':0.3,b'%':0.3,b'\'':0.1,b'"':0.3,b'/':0.1,b'\\':0.1,b'..':0.3,b'`':0.3,b'{':0.1, b'(':0.1,b'FLAG': 1.0}
 
     def __init__(self):
         self.ports = {}
         self.training_treshold = Baseline.TRAINING_TRESHOLD
         self.detection_treshold = Baseline.DETECTION_TRESHOLD
+        self.special_strings = Baseline.SPECIAL_STRINGS
         self.scores = {
             'unrecognized_port': 0.5,
             'nonmatching_convo': 0
@@ -17,7 +19,7 @@ class Baseline:
 
     def addConvo(self, port, convo):
         if port not in self.ports:
-            self.ports[port] = PortBaseline(port)
+            self.ports[port] = PortBaseline(port, self)
         self.ports[port].addConvo(convo)
 
     def checkConvo(self, port, convo):
@@ -37,6 +39,8 @@ class Baseline:
     def dict(self):
         result = {}
         result['training_treshold'] = self.training_treshold
+        result['detection_treshold'] = self.detection_treshold
+        result['special_strings'] = self.special_strings
         port_dict = {}
         for portbl in self.ports.values():
             port_dict[portbl.port] = portbl.dict()
@@ -68,15 +72,18 @@ class Baseline:
     def load(i):
         result = Baseline()
         result.training_treshold = i['training_treshold']
+        result.detection_treshold = i['detection_treshold']
+        result.special_strings = i['special_strings']
         for p, port in i['ports'].items():
-            result.ports[p] = PortBaseline.load(port)
+            result.ports[p] = PortBaseline.load(port, result)
         return result
 
 
 class PortBaseline:
-    def __init__(self, port):
+    def __init__(self, port, baseline=None):
         self.port = port
         self.templates = []
+        self.baseline = baseline
 
     def __str__(self):
         result = "***************\nPort: {:<5}: {} templates\n".format(self.port, len(self.templates))
@@ -91,9 +98,9 @@ class PortBaseline:
         result['templates'] = [t.dict() for t in self.templates]
         return result
 
-    def load(i):
-        result = PortBaseline(i['port'])
-        result.templates = [ConvoTemplate.load(c) for c in i['templates']]
+    def load(i, b=None):
+        result = PortBaseline(i['port'], b)
+        result.templates = [ConvoTemplate.load(c, b) for c in i['templates']]
         return result
 
     def checkConvo(self, convo):
@@ -109,4 +116,4 @@ class PortBaseline:
                 temp.update(*convo)
                 break
         if not found_template:
-            self.templates.append(ConvoTemplate(*convo))
+            self.templates.append(ConvoTemplate(*convo, self.baseline))

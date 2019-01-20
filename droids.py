@@ -5,6 +5,7 @@ import os
 import sys
 import logging
 from baseline_analyzer import BaselineAnalyzer
+from detection_analyzer import DetectionAnalyzer
 import re
 
 
@@ -25,7 +26,6 @@ def read_pcap(pcap):
 
 
 def read_pcaps(pcap):
-    print(pcap)
     if type(pcap) == list and len(pcap) > 1:
         packets = reduce((lambda l, p: l+p), [read_pcap(p) for p in pcap])
     elif os.path.isdir(pcap[0]):
@@ -39,34 +39,40 @@ def error(message):
     logging.error(message)
     sys.exit(1)
 
-def argparse_mac_type(s, pat=r"([a-f0-9-A-Z]{2}[-:]?){6,6}"):
+
+def argparse_mac_type(s, pat=r"([a-f0-9A-F]{2}.?){5}[a-f0-9A-F]{2}"):
     reg = re.compile(pat)
     if not reg.match(s):
         raise ArgumentTypeError
-    return s
+    return s.lower()
 
-def main():
+
+def main(argv):
     parser = ArgumentParser(description='Process some integers.')
     parser.add_argument('cmd', type=str, choices=['baseline', 'detection'])
     parser.add_argument('pcap',  nargs='+',help='Read a pcap for analysis')
     parser.add_argument('--baseline', type=str, help='baseline .yml file')
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--mymac', type=argparse_mac_type, help='Override the mymac detection')
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if args.pcap:
         packets = read_pcaps(args.pcap)
-
+    else:
+        error("No pcaps provided")
+        
     if args.debug or 'DEBUG' in os.environ:
         logging.getLogger().setLevel(logging.DEBUG)
     if args.cmd == 'baseline':
         analyzer = BaselineAnalyzer()
-        baseline = analyzer.run(packets, 'baseline', args.mymac)
+        baseline = analyzer.run(packets, args.mymac)
         baseline.show()
         baseline.write(args.baseline)
     if args.cmd == 'detection':
-        analyzer = BaselineAnalyzer()
+        analyzer = DetectionAnalyzer()
         analyzer.load_baseline(args.baseline)
-        analyzer.run(packets, 'detection', args.mymac)
+        analyzer.run(packets, args.mymac)
+        print(analyzer.render_report())
+
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])

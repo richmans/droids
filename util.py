@@ -1,5 +1,6 @@
 from scapy.all import TCP, IP, ICMP, UDP, ARP
 import os
+from string import printable as printable_chars
 
 
 def dbg(*msg):
@@ -26,3 +27,6 @@ def full_duplex(p):
         else:
             sess = p.sprintf("Ethernet type=%04xr,Ether.type%")
     return sess
+
+def printable(input):
+    return ''.join([chr(x) if chr(x) in printable_chars else '.' for x in input])
