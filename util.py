@@ -1,6 +1,7 @@
 from scapy.all import TCP, IP, ICMP, UDP, ARP
 import os
 from string import printable as printable_chars
+import re
 
 
 def dbg(*msg):
@@ -30,3 +31,19 @@ def full_duplex(p):
 
 def printable(input):
     return ''.join([chr(x) if chr(x) in printable_chars else '.' for x in input])
+
+class ConfigMixin:
+    def get_config(self, name, default=None):
+        if not hasattr(self, 'config'):
+            raise Exception("No config")
+        if name in self.config:
+            return self.config[name]
+        return default
+
+def scrubbed_equals(text, other):
+    flag_p = re.compile(b'FLAG{[0-9A-F]+}')
+    text = text.strip()
+    other = other.strip()
+    text = flag_p.sub(b'FLAG{XXX}', text)
+    other = flag_p.sub(b'FLAG{XXX}', other)
+    return text == other

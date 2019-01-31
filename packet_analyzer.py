@@ -47,12 +47,15 @@ class PacketAnalyzer:
             return b''
 
     def packets_to_convo(self, packets):
-        sent = b''.join([self.get_payload(p) for p in packets if self.my_packet(p)])
-        recv = b''.join([self.get_payload(p) for p in packets if not self.my_packet(p)])
+        sent = b''.join([self.get_payload(p) for p in packets if self.my_packet(p)]).strip()
+        recv = b''.join([self.get_payload(p) for p in packets if not self.my_packet(p)]).strip()
+        logging.debug("Convo consists of {} bytes sent and {} bytes received".format(len(sent), len(recv)))
+        if len(sent) ==0 and len(recv) ==0:
+            return None
         return (sent, recv)
 
     def try_analyze_session(self, packets, s):
-        logging.debug('Examining session {} containing {} packets'.format(s, len(packets)))
+        logging.debug('Examining session {} of {}: {} containing {} packets'.format(self.ctr, self.cnt, s, len(packets)))
         if self.my_packet(packets[0]):
             logging.debug("First packet is from me, ignoring session")
         elif len(packets) < 2:
@@ -66,6 +69,9 @@ class PacketAnalyzer:
         else:
             logging.debug("Unrecognized protocol :(")
 
+    def post_analysis(self):
+        pass
+
     def run(self, packets, mymac=None):
         logging.info(self.banner())
         if mymac:
@@ -74,7 +80,11 @@ class PacketAnalyzer:
             self.find_my_mac(packets)
         sessions = packets.sessions(full_duplex)
         logging.info('Read {} packets in {} sessions'.format(len(packets), len(sessions)))
+        self.ctr = 0
+        self.cnt = len(sessions)
         for s in sessions:
+            self.ctr += 1
             packets = sessions[s]
             self.try_analyze_session(packets, s)
+        self.post_analysis()
         return self.baseline

@@ -49,30 +49,31 @@ def argparse_mac_type(s, pat=r"([a-f0-9A-F]{2}.?){5}[a-f0-9A-F]{2}"):
 
 def main(argv):
     parser = ArgumentParser(description='Process some integers.')
-    parser.add_argument('cmd', type=str, choices=['baseline', 'detection'])
-    parser.add_argument('pcap',  nargs='+',help='Read a pcap for analysis')
+    parser.add_argument('cmd', type=str, choices=['baseline', 'detection', 'show'])
+    parser.add_argument('pcap',  nargs='*',help='Read a pcap for analysis')
     parser.add_argument('--baseline', type=str, help='baseline .yml file')
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--mymac', type=argparse_mac_type, help='Override the mymac detection')
     args = parser.parse_args(argv)
-    if args.pcap:
-        packets = read_pcaps(args.pcap)
-    else:
-        error("No pcaps provided")
-        
+
     if args.debug or 'DEBUG' in os.environ:
         logging.getLogger().setLevel(logging.DEBUG)
     if args.cmd == 'baseline':
         analyzer = BaselineAnalyzer()
+        packets = read_pcaps(args.pcap)
         baseline = analyzer.run(packets, args.mymac)
         baseline.show()
         baseline.write(args.baseline)
     if args.cmd == 'detection':
         analyzer = DetectionAnalyzer()
+        packets = read_pcaps(args.pcap)
         analyzer.load_baseline(args.baseline)
         analyzer.run(packets, args.mymac)
         print(analyzer.render_report())
-
+    if args.cmd == 'show':
+        analyzer = DetectionAnalyzer()
+        analyzer.load_baseline(args.baseline)
+        analyzer.baseline.show()
 
 if __name__ == '__main__':
     main(sys.argv[1:])

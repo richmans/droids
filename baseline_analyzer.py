@@ -8,6 +8,8 @@ class BaselineAnalyzer(PacketAnalyzer):
         dst = tcp.dport
         logging.debug("{} packets to destination port {}".format(len(packets),dst))
         convo = self.packets_to_convo(packets)
+        if not convo:
+            return
         self.baseline.addConvo(dst, convo)
 
     def banner(self):
