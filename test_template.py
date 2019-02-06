@@ -71,7 +71,7 @@ class TemplateTest(BaseTest):
 
     def test_var_expansion(self):
         pass
-        #self.assertEqual(1, Template('xabcdx', [TemplateVariable(1, 4, 4, 4)], self.c).similarity('xdyyyx'))
+        self.assertEqual(1, Template('xabcdx', [TemplateVariable(1, 4, 4, 4)], self.c).similarity('xdydyx'))
         #self.assertEqual(1, Template('xabcdyefghz', [TemplateVariable(1, 4, 4, 4)], self.c).similarity('xcayfgz'))
 
 

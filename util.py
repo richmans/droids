@@ -32,6 +32,10 @@ def full_duplex(p):
 def printable(input):
     return ''.join([chr(x) if chr(x) in printable_chars else '.' for x in input])
 
+
+def is_printable(input):
+    return all(chr(x) in printable_chars for x in input)
+
 class ConfigMixin:
     def get_config(self, name, default=None):
         if not hasattr(self, 'config'):

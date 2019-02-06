@@ -1,7 +1,7 @@
 from copy import copy
 from difflib import SequenceMatcher
 from ascii import RED, GREEN, RESET
-from util import dbg, printable
+from util import dbg, printable, is_printable
 from util import ConfigMixin
 
 
@@ -46,10 +46,35 @@ class Template(ConfigMixin):
         if type(text) == str:
             text = text.encode()
         self.text = text
+        self.compare_text = text
+        self.compare_vars = {}
         self.config = config
         self.variables = variables
         self.special_strings = self.get_config('special_strings', {})
         self.consolidate_vars()
+
+    def fits(self, other):
+        if type(other) == str:
+            other = other.encode()
+        inserts = dict.fromkeys(self.compare_vars.keys(), b'')
+        matcher = self.get_matcher(other)
+        for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+            if tag == 'insert':
+                vpos = i1
+                if not i1 in self.compare_vars:
+                    return False # inserted at an illegal position
+                s2 = other[j1:j2]
+                inserts[i1] = s2
+            elif tag == 'equal':
+                pass
+            else:
+                return False
+        for vpos, value in inserts.items():
+            var = self.compare_vars[vpos]
+            specs = self.get_special_chars(value)
+            if len(value) > var.max_len or len(value) < var.min_len or specs - var.special_strings != set():
+                return False
+        return True
 
     def fit_variable(self, var):
         for own_var in self.variables:
@@ -109,8 +134,6 @@ class Template(ConfigMixin):
         return penalties
 
     def score_difference(self, other_vars, other):
-        if all(self.fit_variable(v) for v in other_vars):
-            return 1.0
         score = 1.0
         penalties = list()
         penalties.append(self.calculate_length_penalty(other) * self.get_config('score_length_weight',0))
@@ -126,14 +149,17 @@ class Template(ConfigMixin):
         result = {c for c in self.special_strings if c in text}
         return result
 
-    def get_matcher(self, other):
+    def get_matcher(self, other, for_update=False):
         other_text = other
         max_text_len = self.get_config('max_text_len', 1024)
         if len(other_text) >  max_text_len:
             other_text = other[:max_text_len]
-        my_text = self.text
+        if for_update:
+            my_text = self.text
+        else:
+            my_text = self.compare_text
         if len(my_text) > max_text_len:
-            my_text = max_text_len
+            my_text = self.compare_text[:max_text_len]
         s = SequenceMatcher(None, my_text, other_text, autojunk=False)
         return s
 
@@ -141,7 +167,7 @@ class Template(ConfigMixin):
         if type(other) == str:
             other = other.encode()
         vars = []
-        matcher = self.get_matcher(other)
+        matcher = self.get_matcher(other, for_update=True)
         for tag, i1, i2, j1, j2 in matcher.get_opcodes():
             ln = i2-i1
             ln2 = j2-j1
@@ -157,6 +183,8 @@ class Template(ConfigMixin):
         return vars
 
     def similarity(self, other):
+        if self.fits(other):
+            return 1.0
         if type(other) == str:
             other = other.encode()
         vars = self.find_variables(other)
@@ -185,6 +213,17 @@ class Template(ConfigMixin):
                 new_vars[-1].merge(v)
             pos = max(pos, v.pos + v.len)
         self.variables = new_vars
+        self.compare_text = b''
+        pos = 0
+        self.compare_vars = {}
+        for var in self.variables:
+            if var.pos > pos:
+                self.compare_text += self.text[pos:var.pos]
+            vpos = len(self.compare_text)
+            self.compare_vars[vpos] = var
+            pos = var.pos + var.len
+        if pos < len(self.text):
+            self.compare_text += self.text[pos:]
 
     def show(self):
         pos = 0
@@ -201,7 +240,10 @@ class Template(ConfigMixin):
         return result
 
     def dict(self):
-        result = {"text": self.text}
+        t = self.text
+        if is_printable(t):
+            t = t.decode()
+        result = {"text": t}
         result['variables'] = [v.dict() for v in self.variables]
         return result
 
