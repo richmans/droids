@@ -42,7 +42,7 @@ Now that we have some data, let's create a baseline:
 
 ```
 $ cd ..
-$ python3 droids.py baseline --baseline baseline.yml droids_demo/example_data/baseline --mymac 02:42:ad:00:00:11
+$ python3 droids.py  --baseline baseline.yml --mymac 02:42:ad:00:00:11  baseline droids_demo/example_data/baseline
 $ cat baseline.yml 
 ```
 
@@ -52,7 +52,7 @@ stored in baseline.yml
 Now we can use the baseline to detect anomalies in our live data!
 
 ```
-$ python3 droids.py detection --baseline baseline.yml droids_demo/example_data/live --mymac 02:42:ac:11:00:02
+$ python3 droids.py  --baseline baseline.yml  --mymac 02:42:ad:00:00:11 detection droids_demo/example_data/live
 [snip]
 [INFO] ==== IDS Anomaly detection ====
 [INFO] Read 155 packets in 16 sessions
